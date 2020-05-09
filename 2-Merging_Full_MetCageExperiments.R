@@ -5,7 +5,7 @@
 ###
 ########################
 
-### author: CBD, Guanlan
+### author: CBD, Guanlan  :)
 
 # make list of needed packages
 list.of.packages <- c("dplyr","dbplyr","readxl", "tidyverse","tibble", "lubridate","mgsub","DT","here")
