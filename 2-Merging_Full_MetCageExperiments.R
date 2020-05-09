@@ -1,17 +1,77 @@
-#title: "Metabolic Cages Analysis - Bandsma"
-#author: "cb"
-#Analysis script for Prasad Metabolomic Cages - Merging experiments
+########################
+###
+### Metabolic Cage Experiments | Bandsmatiks
+### MERGING raw Data
+###
+########################
 
-#Set up working directory, aka you tell the computer in which folder all the files are
-choose.files()
+### author: CBD, Guanlan
+
+# make list of needed packages
+list.of.packages <- c("dplyr","dbplyr","readxl", "tidyverse","tibble", "lubridate","mgsub","DT","here")
+# list any missing packages
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+# if any packages missing --> install
+if(length(new.packages) > 0) {install.packages(new.packages,dependencies = TRUE)}
+# load all packages
+lapply(list.of.packages, require, character.only = TRUE)
+
+
+### Put all files in one directory: the folder must contain only the files that will be merged
+
+### IMPORTING all files from directory
+### read paths using "here" so that different users can use same code more easily
+### create a list of the files from your target directory 
+file_list <- list.files(path=here("1-Data","ImportData_forR"))
+file_list
+
+### Set up working directory, aka you tell the computer in which folder all the files are
+#choose.files()
+
 #replace the path with the location of your files on your computer
 setwd("C:\\Users\\Celine\\Dropbox\\Bandsma.Lab\\Project_LongTermEffectsSAM_Paper\\5. Data\\")
-
+## or
+#setwd(path=here("1-Data","ImportData_forR"))
 
 #list all files within that folder that finishes with .CSV (comma seperated values)
 list.files(pattern="*.csv")
 
 
+### this is a loop function to load and clean the files individually [Note this loop function is to be adapted to metabolic cage data]
+#initiate a blank data frame, each iteration of the loop will append the data from the given file to this variable
+dataset <- data.frame()
+for (i in 1:length(file_list[1:94])){
+  temp_data <- read_excel(here("1-Data","ImportData_forR", file_list[i]), range = cell_cols("A:N")) #read in files with specify columns
+  temp_data <- select(temp_data,c("Timestamp (YYYY-MM-DDThh:mm:ss)","Event Type","Patient Info", starts_with("Glucose Value (mmol"),"Duration (hh:mm:ss)"))
+  temp_data$record_id<-rep(unique(temp_data$"Patient Info")[1], dim(temp_data)[1])
+  temp_data$record_id<-mgsub(as.character(temp_data$record_id), pattern=c("-"), c(""))
+  temp_data<-temp_data[-c(1:9),]
+  temp_data<- temp_data %>% rename(Timestamp = `Timestamp (YYYY-MM-DDThh:mm:ss)`,
+         Event_Type = `Event Type`,
+         Glucose_Value = starts_with("Glucose Value (mmol"),
+         Duration = `Duration (hh:mm:ss)`)
+  temp_data$Date <- as.Date(temp_data$Timestamp)
+  temp_data$Time <- format(as.POSIXlt(strptime(temp_data$Timestamp,format = "%Y-%m-%d %H:%M:%S")),format="%H:%M")
+  temp_data <- select(temp_data,c("record_id","Event_Type", "Glucose_Value","Date","Time"))
+  dataset <- rbind(dataset, temp_data) # for each iteration, bind the new data to the building dataset
+}
+
+
+## add in index of record count
+head(dataset)
+dataset$Index<-1:dim(dataset)[1]
+
+##reorder columns
+colnames(dataset)
+dataset<-dataset[,c(6,1:5)]
+head(dataset)
+
+write.csv(dataset, file=paste0(Sys.Date(),"_Glucose_FullCombinedData.csv"))
+
+
+
+### this code is each file being loaded individually and needs to be replaced by the above code
+#############################################
 #read in the files for each cage
 #cage 1
 X1<-read.csv("DataSet1_MERGE_C1-8_2015-05-12_mice_4-18_percDiet.175.49.csv", header=TRUE)
